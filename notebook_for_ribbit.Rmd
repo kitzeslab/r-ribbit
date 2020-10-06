@@ -1,0 +1,233 @@
+---
+title: "RIBBIT with R"
+output: html_notebook
+---
+
+```{r}
+
+# install these packages: seewave, bspec
+
+library(seewave)
+library(bspec)
+library(utils)
+library(tuneR)
+
+# ==================================================== #
+################ CHANGE THESE VALUES ###################
+
+#note: set your working directory to the location of this script. for example:
+setwd('/Users/sammlapp/Documents/R_RIBBIT')
+
+#folder containing audio files on your computer 
+audio_folder <- './great_plains_toad_dataset'
+
+recursive <- FALSE
+#all .wav or .WAV files in the folder will be analyzed
+#if recursive is FALSE, sub-directories will be ignored
+#if recursive is TRUE, all sub-directories will be searched for .wav files (!)
+#currently supports .wav and .mp3 files only 
+
+#number of samples per spectrogram window 
+spectrogram_window_length <- 512
+#(less samples -> more time resolution but less frequency resolution)
+#To resolve N pulses per second, pick a value less than or equal to (audio sample rate) / N / 2
+
+# overlap percentage (not number of samples) of spectrogram windows. 
+spectrogram_window_overlap_percent <- 50
+#Typical values are 0% and 50%. 
+
+#length of analysis window, in seconds 
+window_len <- 2 #seconds
+#each window is analyzed separately and receives its own score
+
+#range of frequencies (in kHz!!) of the target vocalization 
+signal_band <- c(2,2.5) 
+#picking a narrow range is better than a wide range
+
+#specify frequency ranges (in kHz) that target confusion species or background noises
+noise_bands <- rbind (c(0,.2), #a noise band from 0-200 Hz
+                      c(10,10.1) #a second noise band from 10-10.1 kHz #no comma after the last one
+                      # c(4,5) add more bands if you want. Don't forget comma's after all but last line
+                      ) #closing parenthesis for rbind()
+#(it's usually good to have one low-frequency band, for example from 0-0.5 kHz)
+#you can have as many noise bands as you want
+
+#minimum and maximum Pulse Repetition Rates (PRR) for the target vocalization in pulses/sec
+min_PRR = 10 #pulses/sec
+max_PRR = 20 #pulses/sec
+
+#results of each audio file to csv
+save_results_to_file = TRUE 
+#if TRUE, scores and start times of each window are saved to a .csv for each file
+#the file name will be the same as the audio file, in the same location, plus "RIBBIT_results.csv"
+#if FALSE, the file will not be written, but you can still see the scores in the variable called 'results'
+
+#max score per file to csv
+save_max_scores_to_file = TRUE
+#if TRUE, saves a .csv listing each audio file analyzed and the max RIBBIT score for any window in that file
+#if FALSE, the file will not be written, but the max scores will be stored in the dataframe `max_scores`
+
+#OUTPUTS:
+#'results' is a list (each audio file) of lists (start time and RIBBIT scores for each window in the file)
+#`max_scores` is a dataframe containing the highest score of any window for each audio file analyzed, and the window start time (seconds since beginning of file) for that score
+
+#notes:
+#no audio resampling is implemented. This script will retain the original wav file's sample rate
+#if resampling is necessary, consider using ffmpeg to resample files before using this script
+
+#all ready? Click "Run" in the upper right of this panel (if you're in RStudio) to perform the analysis
+#the outputs are saved in the same folder as the audio. You can open the .csv files with a spreadsheet program like Excel.
+
+######## DONT CHANGE ANYTHING BELOW THIS LINE ##########
+# ==================================================== #
+# (unless you do, of course...)
+
+#find files to analyze
+file_list <- list.files(path = audio_folder,pattern="*.wav$|.mp3$",ignore.case = TRUE,recursive = recursive)
+path_list <- list.files(path = audio_folder,pattern="*.wav$|.mp3$",ignore.case = TRUE,full.names = TRUE,recursive = recursive)
+
+#initialize list to store results by file-name
+results <- list()
+
+#max score dataframe stores the maximum score of each file, 
+#and the start time of the window (seconds since beginning of file)
+max_scores <- data.frame(file=file_list,
+                         path=path_list,
+                         max_score=numeric(length(file_list)),
+                         time=numeric(length(file_list)))
+
+for (file in file_list){
+  file_path <- file.path(audio_folder,file)
+  if (tools::file_ext(file_path)=="mp3"){
+    wav <- readMP3(file_path)
+  }
+  else{
+    wav <- readWave(file_path)
+  }
+  
+  spec <- spectro(wav,
+                  # f=sampling_rate, #changing sample rate is not implemented
+                  wl=spectrogram_window_length,
+                  ovlp=spectrogram_window_overlap_percent,
+                  plot=FALSE)
+  
+  n_windows <- round(max(spec$time)/window_len)
+  if (n_windows<1){
+    print(file)
+    print("file length less than window length. nothing to analyze. skipping.")
+    next
+  }
+
+  #limit spec values to a range. these are our typical values. 
+  min_db <- -100
+  max_db <- -20
+  spec$amp[spec$amp<min_db] <- min_db
+  spec$amp[spec$amps>max_db] <- max_db
+  
+  #analyze each window independently until the end of the file is reached
+  #incomplete windows at the end of a file are discarded
+  window_scores <- numeric(n_windows)
+  window_times <- (0:n_windows)*window_len
+  
+  # analyze each time window independently, storing a score for each window
+  for (w in 0:(n_windows-1)){
+    #crop out this time window from the spectrogram
+    start_t <- w*window_len
+    end_t <- start_t + window_len
+    clipped_spec <- list()
+    clipped_spec$amp <- spec$amp[,spec$time>=start_t & spec$time<end_t]
+    clipped_spec$time <- spec$time[spec$time>=start_t & spec$time<end_t]
+    
+    ### calculate signal band amplitude signal ###
+    
+    #bandpass spectrogram
+    signal_spec <- clipped_spec$amp[spec$freq>=signal_band[1] & spec$freq<signal_band[2],] 
+    
+    #weight values by frequency band size
+    signal_band_weight <- 1/(signal_band[2]-signal_band[1])
+    
+    #vertical sum and scale for amplitude signal
+    if (length(dim(signal_spec))<2) { #in case we have a 1-d vector
+      signal <- signal_spec*signal_band_weight
+    } else {
+      signal <- colSums(signal_spec)*signal_band_weight
+    }
+    
+    ### subtract noise bands from amplitude signal ###
+    
+    #scale factor for the noise band signals
+    total_noise_band_freqs <- 0
+    for(row in 1:nrow(noise_bands)){ #add up frequency ranges in the noise bands
+      noise_band = noise_bands[row,]
+      total_noise_band_freqs <- total_noise_band_freqs + (noise_band[2]-noise_band[1])
+    }
+    noise_bands_weight <- 1/total_noise_band_freqs
+    
+    #subtract each noise band from signal
+    for(row in 1:nrow(noise_bands)){
+      noise_band_low_high <- noise_bands[row,]
+      noise_band_freqs_mask = spec$freq>=noise_band_low_high[1] & spec$freq<noise_band_low_high[2]
+      if (sum(noise_band_freqs_mask)>=1){#there are frequencies in this band
+        noise_spec <- clipped_spec$amp[noise_band_freqs_mask,] 
+        if (sum(noise_band_freqs_mask)==1){ # it is a vector and we need a matrix (R is weird)
+          noise_spec = t(matrix(noise_spec))
+        }
+        
+        if (length(dim(noise_spec))<2) { #in case we have a 1-d vector
+          noise_signal <- noise_spec*noise_bands_weight
+        } else {
+          noise_signal <- colSums(noise_spec)*noise_bands_weight
+        }
+            
+        signal <- signal - noise_signal
+      }
+    }
+    
+    #the amplitude signal should have only non-negative values
+    signal[signal<0] <- 0
+    
+    # plot the net amplitude signal
+    # plot(clipped_spec$time,signal,type='l')
+    
+    #make amplitude signal into a "time series"
+    signal_sample_rate <- 1/(spec$time[2]-spec$time[1])
+    signal_ts <- ts(signal,frequency=signal_sample_rate)
+    
+    ### Calculate the RIBBIT score from the amplitude signal ### 
+    
+    #calculate power spectral density
+    psd <- welchPSD(signal_ts,window_len/2) #not sure what to choose for the second parameter "seglength"
+    
+    #find the max value of PSD inside the allowed range of pulse repetition rates (PRR)
+    #this is the RIBBIT score for this time-window
+    score <- max(psd$power[psd$frequency>min_PRR & psd$frequency<max_PRR])
+    
+    #save the score for this window
+    window_scores[w+1] <- score
+    
+  }
+  file_results_df = data.frame('times'=window_times[1:n_windows],'scores'=window_scores)
+  
+  if (save_results_to_file){
+    write.csv(file_results_df,paste(file_path,'_RIBBIT_results.csv',sep=''))
+  }
+  
+  results[[file]] <- file_results_df
+  
+  #save max score of file into max_scores dataframe, with window start time
+  
+  max_scores[max_scores$file==file, "max_score"] <- max(window_scores)
+  max_scores[max_scores$file==file, "time"] <-window_times[which.max(window_scores)]
+}
+
+#finally, aggregate the max score per file into a dataframe
+if (save_max_scores_to_file){
+  write.csv(max_scores,file.path(audio_folder,'RIBBIT_top_scores_per_file.csv'))
+}
+
+#show top scores per file, sorted high to low
+max_scores[order(-max_scores$max_score),][c('file','time','max_score')]
+
+```
+
+
