@@ -34,7 +34,7 @@ library(tuneR)
 setwd('/Users/sammlapp/Documents/R_RIBBIT')
 
 #folder containing audio files on your computer 
-audio_folder <- './great_plains_toad_dataset'
+audio_folder <- './audio_files'
 
 recursive <- FALSE
 #all .wav or .WAV files in the folder will be analyzed
