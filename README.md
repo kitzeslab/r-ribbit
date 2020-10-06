@@ -1,7 +1,7 @@
 # r-ribbit
 Bioacoustics tool to detect pulsed vocalizations in audio recordings (R implementation)
 
-The Repeat Interval Based Bioacoustic Identification Tool (RIBBIT) is an open-source tool designed to detect pulsing or periodic vocalizations of anurans (frogs and toads) or other vocal taxa in audio recordings. A Python implementation of RIBBIT is included in the open-source  bioacoustics toolkit [OpenSoundscape](github.com/kitzeslab/opensoundscape). We provide an R notebook that performs the same analysis for those more comfortable using R. 
+The Repeat Interval Based Bioacoustic Identification Tool (RIBBIT) is an open-source tool designed to detect pulsing or periodic vocalizations of anurans (frogs and toads) or other vocal taxa in audio recordings. A Python implementation of RIBBIT is included in the open-source  bioacoustics toolkit [OpenSoundscape](https://github.com/kitzeslab/opensoundscape). We provide an R notebook that performs the same analysis for those more comfortable using R. 
 
 ## set up
 Download the R markdown (.Rmd) notebook file and open it in RStudio, or clone this repository.
@@ -45,4 +45,4 @@ Run all cells (in RStudio, Run -> Run All) or run each cell individually and wai
 Navigate to the audio folder to view the saved results, or view a short summary of top-scoring files by scrolling to the bottom of the notebook. 
 
 ## advanced use
-for more advanced use of RIBBIT in larger workflows, consider using [OpenSoundscape](github.com/kitzeslab/opensoundscape) in Python.
+for more advanced use of RIBBIT in larger workflows, consider using [OpenSoundscape](https://github.com/kitzeslab/opensoundscape) in Python.
