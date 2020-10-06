@@ -72,7 +72,7 @@ min_PRR = 10 #pulses/sec
 max_PRR = 20 #pulses/sec
 
 #results of each audio file to csv
-save_results_to_file = TRUE 
+save_results_to_file = FALSE 
 #if TRUE, scores and start times of each window are saved to a .csv for each file
 #the file name will be the same as the audio file, in the same location, plus "RIBBIT_results.csv"
 #if FALSE, the file will not be written, but you can still see the scores in the variable called 'results'
