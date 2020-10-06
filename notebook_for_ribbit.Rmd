@@ -3,10 +3,25 @@ title: "RIBBIT with R"
 output: html_notebook
 ---
 
+## Install packages
 ```{r}
 
-# install these packages: seewave, bspec
+# this notebook has been tested with R base version 3.6.1
+# here we install required packages: seewave, bspec, utils, tuneR
+# the versions listed here have been tested, while other versions may not be compatible
+# you can comment-out these lines or skip this cell if you don't want to re-install the packages
+install.packages("versions")
+library(versions)
 
+install.versions("seewave", '2.1.6')
+install.versions("bspec",'1.5')
+install.versions("tuneR",'1.3.3')
+
+```
+
+## Set up parameters
+```{r}
+# load the required packages
 library(seewave)
 library(bspec)
 library(utils)
@@ -80,8 +95,12 @@ save_max_scores_to_file = TRUE
 
 ######## DONT CHANGE ANYTHING BELOW THIS LINE ##########
 # ==================================================== #
-# (unless you do, of course...)
+# (unless you want to, of course...)
 
+```
+
+## Run the analysis
+```{r}
 #find files to analyze
 file_list <- list.files(path = audio_folder,pattern="*.wav$|.mp3$",ignore.case = TRUE,recursive = recursive)
 path_list <- list.files(path = audio_folder,pattern="*.wav$|.mp3$",ignore.case = TRUE,full.names = TRUE,recursive = recursive)
