@@ -17,7 +17,9 @@ tuneR 1.3.3
 ```
 
 ## basic use
-To use this tool, you will need to specify the location of the audio files you wish to analyze and select parameters for RIBBIT.
+To use this tool, you will need to 
+- specify the location of the audio files you wish to analyze
+- select parameters for RIBBIT analysis
 
 ### 1. Specify location of audio files to analyze
 Change the value of the variable `audio_folder` to the location of your audio files on your computer. For example, if I have .mp3 or .wav files in my Downloads folder on my mac, in a folder called `field_audio`, I would change line 30 to:
