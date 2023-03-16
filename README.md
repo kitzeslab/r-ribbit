@@ -33,7 +33,7 @@ recursive <- TRUE
 If you only wish to analyze audio files on the top level of that folder, leave it as `recursive <- FALSE`
 
 ### 2. Specify parameters for RIBBIT analysis
-Analyzing files with RIBBIT requires that we specify frequency ranges related to the target vocalization and background noise, ranges of pulse repetition rates for the vocalization, and a few other parameters. See the comments in the notebook or the documentation of RIBBIT in [OpenSoundscape](http://opensoundscape.org/en/latest/RIBBIT_pulse_rate_demo.html) for detailed instructions on how to select parameters for your target vocalization. 
+Analyzing files with RIBBIT requires that we specify frequency ranges related to the target vocalization and background noise, ranges of pulse repetition rates for the vocalization, and a few other parameters. See the comments in the notebook or the documentation of RIBBIT in [OpenSoundscape](http://opensoundscape.org/en/latest/tutorials/RIBBIT_pulse_rate_demo.html#Select-model-parameters) for detailed instructions on how to select parameters for your target vocalization. 
 
 Change the values in lines 45-81 of the .Rmd file to reflect your choices of model parameters.
 
